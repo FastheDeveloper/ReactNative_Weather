@@ -1,13 +1,14 @@
 import { Stack, Link } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Text, View ,ImageBackground,StyleSheet} from 'react-native';
 
 import * as Location from 'expo-location';
 import ForcastItem from './forcastItem';
 
+
 const baseUrl = `https://api.openweathermap.org/data/2.5`;
 const Weather_API_Key = process.env.EXPO_PUBLIC_API_KEY;
-
+const bgImage='https://notjustdev-dummy.s3.us-east-2.amazonaws.com/vertical-images/1.jpg'
 // api.openweathermap.org/data/2.5/forecast/daily?lat={lat}&lon={lon}&cnt={cnt}&appid={API key}
 interface WeatherData {
   coord: {
@@ -156,11 +157,12 @@ export default function Home() {
   }
 
   return (
-    <View className="flex-1 items-center bg-white pt-20 ">
+    <ImageBackground source={{uri: bgImage}} className="flex-1 items-center bg-white pt-20 ">
+      <View style={{...StyleSheet.absoluteFillObject,backgroundColor:'rgba(0,0,0,0.5)'}}/>
       <Stack.Screen options={{ title: 'Home', headerShown: false }} />
       <View className='flex-1 items-center justify-center'>
-      <Text className="font-sans text-3xl">{weather.name}</Text>
-      <Text className="font-sans text-8xl text-gray-600">{weather.main.temp}°</Text>
+      <Text className="font-sans text-3xl text-white">{weather.name}</Text>
+      <Text className="font-sans text-8xl text-white">{weather.main.temp}°</Text>
 
       </View>
 
@@ -172,6 +174,6 @@ export default function Home() {
         contentContainerStyle={{ gap: 10,paddingHorizontal:10}}
         renderItem={({ item }) => <ForcastItem forcast={item} />}
       />
-    </View>
+    </ImageBackground>
   );
 }
