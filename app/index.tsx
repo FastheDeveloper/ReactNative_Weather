@@ -1,14 +1,14 @@
 import { Stack, Link } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Text, View } from 'react-native';
 
-import { Button } from '~/components/Button';
-import { Container } from '~/components/Container';
-import { ScreenContent } from '~/components/ScreenContent';
+import * as Location from 'expo-location';
+import ForcastItem from './forcastItem';
 
-const url = `https://api.openweathermap.org/data/2.5/weather?lat=7.348720&lon=3.879290&appid=45850b8070fe1c83d3f591aee9f1fd35&units=metric`;
+const baseUrl = `https://api.openweathermap.org/data/2.5`;
+const Weather_API_Key = process.env.EXPO_PUBLIC_API_KEY;
 
-
+// api.openweathermap.org/data/2.5/forecast/daily?lat={lat}&lon={lon}&cnt={cnt}&appid={API key}
 interface WeatherData {
   coord: {
     lon: number;
@@ -53,38 +53,125 @@ interface WeatherData {
   cod: number;
 }
 
+export interface ForecastItem {
+  dt: number;
+  main: {
+    temp: number;
+    feels_like: number;
+    temp_min: number;
+    temp_max: number;
+    pressure: number;
+    sea_level: number;
+    grnd_level: number;
+    humidity: number;
+    temp_kf: number;
+  };
+  weather: Array<{
+    id: number;
+    main: string;
+    description: string;
+    icon: string;
+  }>;
+  clouds: {
+    all: number;
+  };
+  wind: {
+    speed: number;
+    deg: number;
+    gust: number;
+  };
+  visibility: number;
+  pop: number;
+  rain?: {
+    '3h': number;
+  };
+  sys: {
+    pod: string; // "d" for day, "n" for night
+  };
+  dt_txt: string; // Date and time in string format (e.g. "2022-08-30 15:00:00")
+}
+
+// Forecast data will be an array of ForecastItem
+type Forecast = ForecastItem[];
 
 export default function Home() {
   const [weather, setWeather] = useState<WeatherData>();
-  const [loading,setLoading]=useState<boolean>(false)
+  const [forecast, setForcast] = useState<Forecast>();
+  const [location, setLocation] = useState<Location.LocationObject>();
+  const [errorMsg, setErrorMsg] = useState('');
+
+  useEffect(() => {
+    (async () => {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        setErrorMsg('Permission to access location was denied');
+        return;
+      }
+
+      let location = await Location.getCurrentPositionAsync({});
+      console.log(location);
+      setLocation(location);
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (location) {
+      fetchWeather();
+      fetchForcast();
+    }
+  }, [location]);
+
   const fetchWeather = async () => {
-    //fetch data
-    console.log('fetchhing');
-    const results = await fetch(url);
+    if (!location) {
+      return;
+    }
+    const results = await fetch(
+      `${baseUrl}/weather?lat=${location?.coords.latitude}&lon=${location?.coords.longitude}&appid=${Weather_API_Key}&units=metric`
+    );
     const data = await results.json();
     setWeather(data);
+    // console.log(JSON.stringify(data, null, 2));
+  };
+
+  const fetchForcast = async () => {
+    if (!location) {
+      return;
+    }
+    const result = await fetch(
+      `${baseUrl}/forecast?lat=${location.coords.latitude}&lon=${location.coords.latitude}&appid=${Weather_API_Key}&units=metric`
+    );
+    const data = await result.json();
+    setForcast(data.list);
     console.log(JSON.stringify(data, null, 2));
   };
 
-  useEffect(() => {
-    fetchWeather();
-  }, []);
-
-  if(!weather){
+  if (!weather) {
     return (
       <>
-      <Stack.Screen options={{ title: 'Home', }} />
-      
-      <ActivityIndicator size={"large"}/>
+        <Stack.Screen options={{ title: 'Home' }} />
+
+        <ActivityIndicator size={'large'} />
       </>
-  )
+    );
   }
 
   return (
-    <View className='bg-white flex-1 justify-center items-center '>
-      <Stack.Screen options={{ title: 'Home',headerShown:false }} />
-      <Text className='font-sans text-3xl'>{weather.name}</Text>
-      <Text className='font-sans text-8xl text-gray-600'>{weather.main.temp}°</Text>
+    <View className="flex-1 items-center bg-white pt-20 ">
+      <Stack.Screen options={{ title: 'Home', headerShown: false }} />
+      <View className='flex-1 items-center justify-center'>
+      <Text className="font-sans text-3xl">{weather.name}</Text>
+      <Text className="font-sans text-8xl text-gray-600">{weather.main.temp}°</Text>
+
+      </View>
+
+      <FlatList
+        data={forecast}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={{flexGrow:0,height:150,marginBottom:50}}
+        contentContainerStyle={{ gap: 10,paddingHorizontal:10}}
+        renderItem={({ item }) => <ForcastItem forcast={item} />}
+      />
     </View>
   );
 }
